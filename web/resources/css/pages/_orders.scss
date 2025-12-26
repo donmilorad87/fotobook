@@ -1,0 +1,121 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.orders-list {
+    @include card;
+    overflow: hidden;
+}
+
+.orders-table {
+    width: 100%;
+
+    th, td {
+        padding: $spacing-4;
+        text-align: left;
+    }
+
+    th {
+        background-color: $color-gray-50;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-semibold;
+        text-transform: uppercase;
+        color: $color-gray-500;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid $color-gray-200;
+    }
+
+    td {
+        border-bottom: 1px solid $color-gray-100;
+        font-size: $font-size-sm;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover td {
+        background-color: $color-gray-50;
+    }
+}
+
+.order-detail {
+    @include grid(1, $spacing-6);
+
+    @include lg {
+        @include grid(3, $spacing-6);
+    }
+}
+
+.order-detail-main {
+    @include lg {
+        grid-column: span 2;
+    }
+}
+
+.order-detail-sidebar {
+    .card {
+        margin-bottom: $spacing-4;
+    }
+}
+
+.order-info-card {
+    @include card;
+    padding: $spacing-6;
+    margin-bottom: $spacing-6;
+}
+
+.order-info-row {
+    @include flex-between;
+    padding: $spacing-3 0;
+    border-bottom: 1px solid $color-gray-100;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.order-info-label {
+    font-size: $font-size-sm;
+    color: $color-gray-500;
+}
+
+.order-info-value {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $color-gray-900;
+}
+
+.order-pictures-header {
+    @include flex-between;
+    margin-bottom: $spacing-4;
+}
+
+.order-pictures-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+}
+
+.order-pictures-grid {
+    @include grid(2, $spacing-3);
+
+    @include sm {
+        @include grid(3, $spacing-3);
+    }
+
+    @include md {
+        @include grid(4, $spacing-3);
+    }
+}
+
+.order-picture-item {
+    @include aspect-ratio(1, 1);
+    border-radius: $radius-md;
+    overflow: hidden;
+    background-color: $color-gray-100;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}

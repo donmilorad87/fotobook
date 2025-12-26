@@ -1,0 +1,166 @@
+services:
+  # =============================================================================
+  # PostgreSQL Database
+  # =============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: fotobook_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-fotobook}
+      POSTGRES_USER: ${DB_USERNAME:-fotobook}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-fotobook} -d ${DB_DATABASE:-fotobook}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fotobook_network
+
+  # =============================================================================
+  # Redis (Session & Cache)
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: fotobook_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fotobook_network
+
+  # =============================================================================
+  # PHP-FPM (Laravel Application)
+  # =============================================================================
+  app:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: app
+    container_name: fotobook_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-fotobook}
+      DB_USERNAME: ${DB_USERNAME:-fotobook}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+    volumes:
+      - ./web:/var/www/html
+      - ./web/storage/app/public:/var/www/html/storage/app/public
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fotobook_network
+
+  # =============================================================================
+  # Nginx Web Server
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: fotobook_nginx
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+    volumes:
+      - ./web:/var/www/html:ro
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - fotobook_network
+
+  # =============================================================================
+  # Queue Worker (Laravel Horizon or Queues)
+  # =============================================================================
+  queue:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: app
+    container_name: fotobook_queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-fotobook}
+      DB_USERNAME: ${DB_USERNAME:-fotobook}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+    volumes:
+      - ./web:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fotobook_network
+
+  # =============================================================================
+  # Node.js (Vite Dev Server - Development Only)
+  # =============================================================================
+  node:
+    image: node:20-alpine
+    container_name: fotobook_node
+    working_dir: /var/www/html
+    profiles:
+      - dev
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    volumes:
+      - ./web:/var/www/html
+    networks:
+      - fotobook_network
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  fotobook_network:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

@@ -1,0 +1,99 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.auth-layout {
+    min-height: 100vh;
+    @include flex-center;
+    padding: $spacing-4;
+    background: linear-gradient(135deg, $color-gray-100 0%, $color-gray-200 100%);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    @include card;
+    padding: $spacing-8;
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: $spacing-6;
+
+    h1 {
+        font-size: $font-size-3xl;
+        font-weight: $font-weight-bold;
+        color: $color-primary;
+    }
+
+    p {
+        color: $color-gray-500;
+        margin-top: $spacing-2;
+        margin-bottom: 0;
+    }
+}
+
+.auth-form {
+    .form-group {
+        margin-bottom: $spacing-5;
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: $spacing-3;
+        font-size: $font-size-base;
+    }
+}
+
+.auth-links {
+    margin-top: $spacing-6;
+    text-align: center;
+    font-size: $font-size-sm;
+    color: $color-gray-500;
+
+    a {
+        font-weight: $font-weight-medium;
+    }
+}
+
+.auth-divider {
+    position: relative;
+    margin: $spacing-6 0;
+    text-align: center;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: $color-gray-200;
+    }
+
+    span {
+        position: relative;
+        padding: 0 $spacing-4;
+        background-color: $color-white;
+        color: $color-gray-500;
+        font-size: $font-size-sm;
+    }
+}
+
+.google-btn {
+    @include button-base;
+    width: 100%;
+    padding: $spacing-3;
+    background-color: $color-white;
+    border-color: $color-gray-300;
+    color: $color-gray-700;
+
+    &:hover:not(:disabled) {
+        background-color: $color-gray-50;
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+        margin-right: $spacing-2;
+    }
+}

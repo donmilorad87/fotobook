@@ -1,0 +1,199 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.gallery-grid {
+    @include grid(2, $spacing-4);
+
+    @include sm {
+        @include grid(3, $spacing-4);
+    }
+
+    @include md {
+        @include grid(4, $spacing-4);
+    }
+
+    @include lg {
+        @include grid(5, $spacing-4);
+    }
+
+    @include xl {
+        @include grid(6, $spacing-4);
+    }
+}
+
+.gallery-item {
+    position: relative;
+    @include aspect-ratio(1, 1);
+    border-radius: $radius-lg;
+    overflow: hidden;
+    background-color: $color-gray-800;
+    cursor: pointer;
+
+    &:hover {
+        .gallery-item-overlay {
+            opacity: 1;
+        }
+    }
+}
+
+.gallery-item-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform $transition-slow;
+
+    .gallery-item:hover & {
+        transform: scale(1.05);
+    }
+}
+
+.gallery-item-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba($color-black, 0.6) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity $transition-fast;
+    @include flex-column;
+    justify-content: flex-end;
+    padding: $spacing-3;
+}
+
+.gallery-item-checkbox {
+    position: absolute;
+    top: $spacing-3;
+    left: $spacing-3;
+    width: 24px;
+    height: 24px;
+    border-radius: $radius-md;
+    background-color: rgba($color-white, 0.9);
+    border: 2px solid transparent;
+    @include flex-center;
+    cursor: pointer;
+    transition: all $transition-fast;
+    opacity: 0;
+
+    .gallery-item:hover & {
+        opacity: 1;
+    }
+
+    &.is-selected {
+        opacity: 1;
+        background-color: $color-primary;
+        border-color: $color-primary;
+
+        svg {
+            color: $color-white;
+        }
+    }
+
+    svg {
+        width: 14px;
+        height: 14px;
+        color: transparent;
+    }
+}
+
+.gallery-item-index {
+    position: absolute;
+    bottom: $spacing-3;
+    right: $spacing-3;
+    padding: $spacing-1 $spacing-2;
+    background-color: rgba($color-black, 0.7);
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    color: $color-white;
+}
+
+// Gallery cards for dashboard
+.gallery-card {
+    @include card;
+    transition: box-shadow $transition-fast;
+
+    &:hover {
+        box-shadow: $shadow-lg;
+    }
+}
+
+.gallery-card-image {
+    @include aspect-ratio(16, 9);
+    background-color: $color-gray-100;
+    overflow: hidden;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+.gallery-card-body {
+    padding: $spacing-4;
+}
+
+.gallery-card-title {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    @include truncate;
+    margin-bottom: $spacing-1;
+}
+
+.gallery-card-meta {
+    font-size: $font-size-sm;
+    color: $color-gray-500;
+    display: flex;
+    gap: $spacing-4;
+}
+
+.gallery-card-actions {
+    padding: $spacing-3 $spacing-4;
+    border-top: 1px solid $color-gray-100;
+    @include flex-between;
+}
+
+// Google Drive image loading states
+.google-loading-image {
+    background: linear-gradient(
+        90deg,
+        $color-gray-200 25%,
+        $color-gray-100 50%,
+        $color-gray-200 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.google-loaded-image {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.google-error-image {
+    background-color: $color-gray-200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &::after {
+        content: 'Failed to load';
+        font-size: $font-size-xs;
+        color: $color-gray-500;
+    }
+}

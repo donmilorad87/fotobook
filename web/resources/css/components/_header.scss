@@ -1,0 +1,36 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.header-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+}
+
+.header-user {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+}
+
+.header-user-name {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $color-gray-700;
+}
+
+.header-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-full;
+    background-color: $color-primary;
+    color: $color-white;
+    @include flex-center;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-4;
+}

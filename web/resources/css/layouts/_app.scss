@@ -1,0 +1,84 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: $sidebar-width;
+    height: 100vh;
+    background-color: $color-white;
+    border-right: 1px solid $color-gray-200;
+    z-index: $z-fixed;
+    overflow-y: auto;
+}
+
+.app-main {
+    flex: 1;
+    margin-left: $sidebar-width;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header {
+    position: sticky;
+    top: 0;
+    height: $header-height;
+    background-color: $color-white;
+    border-bottom: 1px solid $color-gray-200;
+    z-index: $z-sticky;
+    @include flex-between;
+    padding: 0 $spacing-6;
+}
+
+.app-content {
+    flex: 1;
+    padding: $spacing-6;
+}
+
+.page-header {
+    @include flex-between;
+    margin-bottom: $spacing-6;
+}
+
+.page-title {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-semibold;
+}
+
+.page-actions {
+    display: flex;
+    gap: $spacing-3;
+}
+
+// Responsive
+@media (max-width: $breakpoint-lg) {
+    .app-sidebar {
+        transform: translateX(-100%);
+        transition: transform $transition-base;
+
+        &.is-open {
+            transform: translateX(0);
+        }
+    }
+
+    .app-main {
+        margin-left: 0;
+    }
+
+    .sidebar-toggle {
+        display: block;
+    }
+}
+
+@media (min-width: $breakpoint-lg) {
+    .sidebar-toggle {
+        display: none;
+    }
+}

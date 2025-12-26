@@ -1,0 +1,75 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.sidebar-header {
+    padding: $spacing-6;
+    border-bottom: 1px solid $color-gray-200;
+}
+
+.sidebar-logo {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-primary;
+}
+
+.sidebar-nav {
+    padding: $spacing-4;
+}
+
+.sidebar-nav-item {
+    margin-bottom: $spacing-1;
+}
+
+.sidebar-nav-link {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    padding: $spacing-3 $spacing-4;
+    border-radius: $radius-md;
+    color: $color-gray-600;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    transition: all $transition-fast;
+
+    &:hover {
+        background-color: $color-gray-100;
+        color: $color-gray-900;
+    }
+
+    &.is-active {
+        background-color: rgba($color-primary, 0.1);
+        color: $color-primary;
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+    }
+}
+
+.sidebar-section {
+    margin-top: $spacing-6;
+    padding-top: $spacing-4;
+    border-top: 1px solid $color-gray-200;
+
+    &-title {
+        padding: 0 $spacing-4;
+        margin-bottom: $spacing-2;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-semibold;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: $color-gray-400;
+    }
+}
+
+.sidebar-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: $spacing-4;
+    border-top: 1px solid $color-gray-200;
+    background-color: $color-white;
+}

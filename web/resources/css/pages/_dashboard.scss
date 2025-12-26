@@ -1,0 +1,106 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.dashboard-stats {
+    @include grid(1, $spacing-4);
+    margin-bottom: $spacing-6;
+
+    @include sm {
+        @include grid(2, $spacing-4);
+    }
+
+    @include lg {
+        @include grid(4, $spacing-4);
+    }
+}
+
+.stat-card {
+    @include card;
+    padding: $spacing-6;
+}
+
+.stat-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-lg;
+    @include flex-center;
+    margin-bottom: $spacing-4;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    &--primary {
+        background-color: rgba($color-primary, 0.1);
+        color: $color-primary;
+    }
+
+    &--success {
+        background-color: rgba($color-success, 0.1);
+        color: $color-success;
+    }
+
+    &--warning {
+        background-color: rgba($color-warning, 0.1);
+        color: $color-warning;
+    }
+}
+
+.stat-card-value {
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-bold;
+    color: $color-gray-900;
+    margin-bottom: $spacing-1;
+}
+
+.stat-card-label {
+    font-size: $font-size-sm;
+    color: $color-gray-500;
+}
+
+.dashboard-section {
+    margin-bottom: $spacing-8;
+}
+
+.dashboard-section-header {
+    @include flex-between;
+    margin-bottom: $spacing-4;
+}
+
+.dashboard-section-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+}
+
+.recent-orders-table {
+    @include card;
+    overflow: hidden;
+
+    table {
+        width: 100%;
+    }
+
+    th, td {
+        padding: $spacing-3 $spacing-4;
+        text-align: left;
+    }
+
+    th {
+        background-color: $color-gray-50;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-semibold;
+        text-transform: uppercase;
+        color: $color-gray-500;
+        letter-spacing: 0.05em;
+    }
+
+    td {
+        border-top: 1px solid $color-gray-100;
+        font-size: $font-size-sm;
+    }
+
+    tr:hover td {
+        background-color: $color-gray-50;
+    }
+}

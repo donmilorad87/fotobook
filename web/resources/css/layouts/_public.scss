@@ -1,0 +1,79 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.public-layout {
+    min-height: 100vh;
+    background-color: $color-gray-900;
+}
+
+.public-header {
+    position: sticky;
+    top: 0;
+    z-index: $z-sticky;
+    padding: $spacing-4 $spacing-6;
+    background-color: rgba($color-gray-900, 0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid $color-gray-800;
+    @include flex-between;
+}
+
+.public-logo {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-white;
+}
+
+.public-gallery-info {
+    h1 {
+        font-size: $font-size-lg;
+        color: $color-white;
+        margin-bottom: $spacing-1;
+    }
+
+    p {
+        font-size: $font-size-sm;
+        color: $color-gray-400;
+        margin: 0;
+    }
+}
+
+.public-content {
+    @include container;
+    padding-top: $spacing-6;
+    padding-bottom: $spacing-16;
+}
+
+.selection-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: $z-fixed;
+    padding: $spacing-4 $spacing-6;
+    background-color: $color-white;
+    border-top: 1px solid $color-gray-200;
+    box-shadow: $shadow-xl;
+    @include flex-between;
+    transform: translateY(100%);
+    transition: transform $transition-base;
+
+    &.is-visible {
+        transform: translateY(0);
+    }
+}
+
+.selection-count {
+    font-size: $font-size-base;
+    font-weight: $font-weight-medium;
+    color: $color-gray-900;
+
+    span {
+        color: $color-primary;
+        font-weight: $font-weight-bold;
+    }
+}
+
+.selection-actions {
+    display: flex;
+    gap: $spacing-3;
+}

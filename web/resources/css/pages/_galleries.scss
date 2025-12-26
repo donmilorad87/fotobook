@@ -1,0 +1,100 @@
+@use '../variables' as *;
+@use '../mixins' as *;
+
+.galleries-grid {
+    @include grid(1, $spacing-6);
+
+    @include sm {
+        @include grid(2, $spacing-6);
+    }
+
+    @include lg {
+        @include grid(3, $spacing-6);
+    }
+}
+
+.gallery-detail-header {
+    @include card;
+    padding: $spacing-6;
+    margin-bottom: $spacing-6;
+    @include flex-between;
+    flex-wrap: wrap;
+    gap: $spacing-4;
+}
+
+.gallery-detail-info {
+    h1 {
+        font-size: $font-size-2xl;
+        margin-bottom: $spacing-2;
+    }
+}
+
+.gallery-detail-meta {
+    display: flex;
+    gap: $spacing-6;
+    font-size: $font-size-sm;
+    color: $color-gray-500;
+
+    span {
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+    }
+}
+
+.gallery-detail-actions {
+    display: flex;
+    gap: $spacing-3;
+    flex-wrap: wrap;
+}
+
+.gallery-url-box {
+    @include card;
+    padding: $spacing-4;
+    margin-bottom: $spacing-6;
+    @include flex-between;
+    flex-wrap: wrap;
+    gap: $spacing-3;
+}
+
+.gallery-url-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $color-gray-700;
+    margin-bottom: $spacing-1;
+}
+
+.gallery-url-input {
+    @include flex-between;
+    gap: $spacing-3;
+    flex: 1;
+
+    input {
+        @include input-base;
+        flex: 1;
+        background-color: $color-gray-50;
+    }
+}
+
+.empty-state {
+    @include card;
+    padding: $spacing-12;
+    text-align: center;
+
+    svg {
+        width: 64px;
+        height: 64px;
+        color: $color-gray-300;
+        margin-bottom: $spacing-4;
+    }
+
+    h3 {
+        font-size: $font-size-lg;
+        margin-bottom: $spacing-2;
+    }
+
+    p {
+        color: $color-gray-500;
+        margin-bottom: $spacing-4;
+    }
+}
