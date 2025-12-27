@@ -9,6 +9,7 @@
     <title>@yield('title', 'Dashboard') - {{ config('app.name') }}</title>
 
     @vite(['resources/css/app.scss', 'resources/js/app.js', 'resources/js/google-image-loader.js'])
+    <script src="{{ asset('js/image-cache-service.js') }}?v={{ config('app.assets_version') }}"></script>
 </head>
 <body>
     <div class="app-layout">
@@ -40,5 +41,22 @@
             </main>
         </div>
     </div>
+
+    @if (session('invalidate_cache'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var imageIds = @json(session('invalidate_cache'));
+            if (window.imageCacheService && imageIds && imageIds.length > 0) {
+                window.imageCacheService.deleteMultiple(imageIds)
+                    .then(function(count) {
+                        console.log('Invalidated ' + count + ' cached images');
+                    })
+                    .catch(function(error) {
+                        console.warn('Cache invalidation failed:', error);
+                    });
+            }
+        });
+    </script>
+    @endif
 </body>
 </html>

@@ -71,12 +71,18 @@ class GalleryService
      * The Flutter app will sync and remove local copies when it detects
      * the gallery no longer exists on the server.
      *
+     * Returns array of invalidated image IDs for frontend cache invalidation.
+     *
      * @param Gallery $gallery
      * @param User $user The gallery owner (for Google Drive access)
-     * @return void
+     * @return array List of invalidated image IDs
      */
-    public function deleteGallery(Gallery $gallery, User $user): void
+    public function deleteGallery(Gallery $gallery, User $user): array
     {
+        // Invalidate Redis cache for all images before deletion
+        $imageCacheService = new ImageCacheService();
+        $invalidatedIds = $imageCacheService->invalidateGalleryCache($gallery);
+
         // Delete folder from Google Drive (includes all files)
         if ($gallery->google_drive_folder_id !== null && $user->isGoogleConnected()) {
             try {
@@ -90,5 +96,7 @@ class GalleryService
 
         // Delete from database (cascades to pictures and orders)
         $gallery->delete();
+
+        return $invalidatedIds;
     }
 }

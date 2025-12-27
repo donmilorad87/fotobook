@@ -23,6 +23,9 @@ dependencies:
   # File picking
   file_picker: ^10.0.0
 
+  # Drag and drop support
+  desktop_drop: ^0.5.0
+
   # Image compression
   flutter_image_compress: ^2.3.0
 

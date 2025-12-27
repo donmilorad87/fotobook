@@ -1,7 +1,8 @@
 /**
  * Google Drive Image Loader
  * Fetches images through backend proxy to avoid CORS issues.
- * Loads images asynchronously without blocking.
+ * Uses IndexedDB for persistent caching across sessions.
+ * Uses memory cache for fast access within session.
  */
 
 class GoogleImageLoader {
@@ -12,20 +13,23 @@ class GoogleImageLoader {
         this.retryDelay = options.retryDelay || 1000;
         this.queue = [];
         this.activeRequests = 0;
-        this.loadedImages = new Map(); // Cache loaded blob URLs
+        this.loadedImages = new Map(); // Memory cache for blob URLs
+        this.cacheService = window.imageCacheService || null;
     }
 
     init() {
         const images = document.querySelectorAll(this.selector);
         if (images.length === 0) return;
 
-        images.forEach(img => {
+        const imageCount = images.length;
+        for (let i = 0; i < imageCount; i++) {
+            const img = images[i];
             const imageId = img.dataset.googleImageId;
             if (imageId) {
                 img.classList.add('google-loading-image');
                 this.queue.push({ img, imageId, attempts: 0 });
             }
-        });
+        }
 
         this.processQueue();
     }
@@ -45,40 +49,74 @@ class GoogleImageLoader {
 
     async loadImage(item) {
         const { img, imageId } = item;
-        
-        // Check if already loaded (cached)
+
+        // 1. Check memory cache first (fastest)
         if (this.loadedImages.has(imageId)) {
-            img.src = this.loadedImages.get(imageId);
-            img.classList.remove('google-loading-image');
-            img.classList.add('google-loaded-image');
+            this.applyImageToElement(img, this.loadedImages.get(imageId), imageId);
             return;
         }
 
-        try {
-            // Use backend proxy to avoid CORS issues
-            const url = `/image/${imageId}`;
+        // 2. Check IndexedDB cache
+        const cachedImage = await this.getFromIndexedDB(imageId);
+        if (cachedImage) {
+            const blobUrl = ImageCacheService.base64ToBlobUrl(
+                cachedImage.data,
+                cachedImage.contentType
+            );
+            this.loadedImages.set(imageId, blobUrl);
+            this.applyImageToElement(img, blobUrl, imageId);
+            return;
+        }
 
+        // 3. Fetch from backend API
+        await this.fetchFromApi(item);
+    }
+
+    async getFromIndexedDB(imageId) {
+        if (!this.cacheService) return null;
+
+        try {
+            return await this.cacheService.get(imageId);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async saveToIndexedDB(imageId, base64Data, contentType) {
+        if (!this.cacheService) return;
+
+        try {
+            await this.cacheService.set(imageId, base64Data, contentType);
+        } catch (error) {
+            // Silent fail - caching is optional
+        }
+    }
+
+    async fetchFromApi(item) {
+        const { img, imageId } = item;
+
+        try {
+            const url = `/image/${imageId}`;
             const response = await fetch(url);
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
 
+            const contentType = response.headers.get('Content-Type') || 'image/jpeg';
             const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
 
-            // Cache the blob URL
-            this.loadedImages.set(imageId, objectUrl);
+            // Convert to base64 for IndexedDB storage
+            const base64Data = await ImageCacheService.blobToBase64(blob);
 
-            img.src = objectUrl;
-            img.classList.remove('google-loading-image');
-            img.classList.add('google-loaded-image');
+            // Save to IndexedDB cache
+            await this.saveToIndexedDB(imageId, base64Data, contentType);
 
-            // Dispatch event for other components (like lightbox)
-            img.dispatchEvent(new CustomEvent('google-image-loaded', {
-                bubbles: true,
-                detail: { imageId, objectUrl }
-            }));
+            // Create blob URL for display
+            const blobUrl = URL.createObjectURL(blob);
+            this.loadedImages.set(imageId, blobUrl);
+
+            this.applyImageToElement(img, blobUrl, imageId);
 
         } catch (error) {
             item.attempts++;
@@ -94,19 +132,42 @@ class GoogleImageLoader {
         }
     }
 
-    // Get cached URL for an image ID
+    applyImageToElement(img, blobUrl, imageId) {
+        img.src = blobUrl;
+        img.classList.remove('google-loading-image');
+        img.classList.add('google-loaded-image');
+
+        img.dispatchEvent(new CustomEvent('google-image-loaded', {
+            bubbles: true,
+            detail: { imageId, objectUrl: blobUrl }
+        }));
+    }
+
+    // Get cached URL for an image ID (memory only)
     getCachedUrl(imageId) {
         return this.loadedImages.get(imageId) || null;
     }
 
     // Load a single image by ID (for lightbox)
     async loadSingleImage(imageId) {
+        // 1. Check memory cache
         if (this.loadedImages.has(imageId)) {
             return this.loadedImages.get(imageId);
         }
 
+        // 2. Check IndexedDB cache
+        const cachedImage = await this.getFromIndexedDB(imageId);
+        if (cachedImage) {
+            const blobUrl = ImageCacheService.base64ToBlobUrl(
+                cachedImage.data,
+                cachedImage.contentType
+            );
+            this.loadedImages.set(imageId, blobUrl);
+            return blobUrl;
+        }
+
+        // 3. Fetch from API
         try {
-            // Use backend proxy to avoid CORS issues
             const url = `/image/${imageId}`;
             const response = await fetch(url);
 
@@ -114,14 +175,58 @@ class GoogleImageLoader {
                 throw new Error(`HTTP ${response.status}`);
             }
 
+            const contentType = response.headers.get('Content-Type') || 'image/jpeg';
             const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            this.loadedImages.set(imageId, objectUrl);
 
-            return objectUrl;
+            // Convert to base64 for IndexedDB storage
+            const base64Data = await ImageCacheService.blobToBase64(blob);
+
+            // Save to IndexedDB cache
+            await this.saveToIndexedDB(imageId, base64Data, contentType);
+
+            // Create blob URL for display
+            const blobUrl = URL.createObjectURL(blob);
+            this.loadedImages.set(imageId, blobUrl);
+
+            return blobUrl;
         } catch (error) {
             console.error('Failed to load single image:', imageId, error);
             return null;
+        }
+    }
+
+    // Get cache statistics
+    async getCacheStats() {
+        const memoryCount = this.loadedImages.size;
+        let indexedDbStats = { count: 0 };
+
+        if (this.cacheService) {
+            try {
+                indexedDbStats = await this.cacheService.getStats();
+            } catch (error) {
+                // Ignore
+            }
+        }
+
+        return {
+            memory: memoryCount,
+            indexedDb: indexedDbStats.count
+        };
+    }
+
+    // Clear all caches
+    async clearCache() {
+        // Clear memory cache
+        this.loadedImages.forEach(url => URL.revokeObjectURL(url));
+        this.loadedImages.clear();
+
+        // Clear IndexedDB cache
+        if (this.cacheService) {
+            try {
+                await this.cacheService.clearAll();
+            } catch (error) {
+                // Ignore
+            }
         }
     }
 

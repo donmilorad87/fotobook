@@ -1,5 +1,6 @@
 class Order {
   final int id;
+  final int? localGalleryId; // Local Flutter DB gallery ID for automatic matching
   final String galleryName;
   final String clientName;
   final String clientEmail;
@@ -8,6 +9,7 @@ class Order {
 
   Order({
     required this.id,
+    this.localGalleryId,
     required this.galleryName,
     required this.clientName,
     required this.clientEmail,
@@ -17,6 +19,9 @@ class Order {
 
   int get selectedCount => selectedPictures.length;
 
+  /// Check if this order can be automatically matched to a local gallery.
+  bool get hasLocalGalleryId => localGalleryId != null;
+
   factory Order.fromJson(Map<String, dynamic> json) {
     final pictures = (json['selected_pictures'] as List<dynamic>?)
             ?.map((p) => OrderItem.fromJson(p as Map<String, dynamic>))
@@ -25,6 +30,7 @@ class Order {
 
     return Order(
       id: json['order_id'] as int? ?? json['id'] as int,
+      localGalleryId: json['local_gallery_id'] as int?,
       galleryName: json['gallery_name'] as String? ?? '',
       clientName: json['client_name'] as String? ?? '',
       clientEmail: json['client_email'] as String? ?? '',
@@ -38,6 +44,7 @@ class Order {
   Map<String, dynamic> toJson() {
     return {
       'order_id': id,
+      'local_gallery_id': localGalleryId,
       'gallery_name': galleryName,
       'client_name': clientName,
       'client_email': clientEmail,

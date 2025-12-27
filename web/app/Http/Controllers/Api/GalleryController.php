@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Gallery;
 use App\Models\Picture;
 use App\Services\GoogleDriveService;
+use App\Services\RabbitMQService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,7 +20,7 @@ class GalleryController extends Controller
         $user = $request->user();
 
         $galleries = $user->galleries()
-            ->select(['id', 'name', 'slug', 'google_drive_folder_id', 'created_at'])
+            ->select(['id', 'name', 'slug', 'google_drive_folder_id', 'local_gallery_id', 'created_at'])
             ->withCount('pictures')
             ->get();
 
@@ -29,6 +30,7 @@ class GalleryController extends Controller
                 'name' => $g->name,
                 'slug' => $g->slug,
                 'google_drive_folder_id' => $g->google_drive_folder_id,
+                'local_gallery_id' => $g->local_gallery_id,
                 'picture_count' => $g->pictures_count,
                 'created_at' => $g->created_at->toIso8601String(),
             ])->toArray(),
@@ -44,6 +46,7 @@ class GalleryController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'total_images' => ['required', 'integer', 'min:1'],
+            'local_gallery_id' => ['nullable', 'integer'],
         ]);
 
         $user = $request->user();
@@ -53,6 +56,7 @@ class GalleryController extends Controller
             $gallery = Gallery::create([
                 'user_id' => $user->id,
                 'name' => $validated['name'],
+                'local_gallery_id' => $validated['local_gallery_id'] ?? null,
             ]);
 
             // Create Google Drive folder
@@ -65,6 +69,7 @@ class GalleryController extends Controller
                 'gallery_id' => $gallery->id,
                 'folder_id' => $folderId,
                 'slug' => $gallery->slug,
+                'local_gallery_id' => $gallery->local_gallery_id,
                 'total_images' => $validated['total_images'],
                 'uploaded' => 0,
             ], 201);
@@ -79,6 +84,7 @@ class GalleryController extends Controller
 
     /**
      * Upload a single image to an existing gallery.
+     * Uses RabbitMQ for async processing.
      * Returns progress information.
      */
     public function uploadImage(Request $request, Gallery $gallery): JsonResponse
@@ -99,31 +105,39 @@ class GalleryController extends Controller
         try {
             $file = $request->file('image');
             $filename = $file->getClientOriginalName();
-            $fileData = $file->get();
+            $fileData = base64_encode($file->get());
 
-            // Upload to Google Drive
-            $driveService = new GoogleDriveService($user);
-            $uploadResult = $driveService->uploadFile(
-                base64_encode($fileData),
-                $filename,
-                $gallery->google_drive_folder_id
-            );
-
-            // Create picture record
-            $picture = Picture::create([
+            // Send upload request via RabbitMQ
+            $rabbitMQ = new RabbitMQService();
+            $result = $rabbitMQ->rpcImageUpload([
+                'user_id' => $user->id,
                 'gallery_id' => $gallery->id,
-                'original_filename' => $filename,
-                'google_drive_url' => $uploadResult['url'],
-                'google_drive_file_id' => $uploadResult['file_id'],
-                'order_index' => $validated['image_index'],
+                'filename' => $filename,
+                'file_data' => $fileData,
+                'folder_id' => $gallery->google_drive_folder_id,
+                'image_index' => $validated['image_index'],
             ]);
+
+            if ($result === null) {
+                return response()->json([
+                    'error' => 'Upload timeout',
+                    'message' => 'Image upload request timed out',
+                ], 504);
+            }
+
+            if (!($result['success'] ?? false)) {
+                return response()->json([
+                    'error' => 'Failed to upload image',
+                    'message' => $result['error'] ?? 'Unknown error',
+                ], 500);
+            }
 
             $uploaded = $gallery->pictures()->count();
             $total = $validated['total_images'];
 
             return response()->json([
                 'success' => true,
-                'picture_id' => $picture->id,
+                'picture_id' => $result['picture_id'],
                 'filename' => $filename,
                 'uploaded' => $uploaded,
                 'total' => $total,
@@ -155,6 +169,7 @@ class GalleryController extends Controller
         return response()->json([
             'gallery_id' => $gallery->id,
             'slug' => $gallery->slug,
+            'local_gallery_id' => $gallery->local_gallery_id,
             'public_url' => $gallery->public_url,
             'picture_count' => $gallery->pictures->count(),
             'pictures' => $gallery->pictures->map(fn ($p) => [

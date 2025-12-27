@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use 'variables' as *;
 @use 'mixins' as *;
 
@@ -125,7 +126,7 @@ table {
     color: $color-white;
 
     &:hover:not(:disabled) {
-        background-color: darken($color-danger, 10%);
+        background-color: color.adjust($color-danger, $lightness: -10%);
     }
 }
 
@@ -215,19 +216,19 @@ table {
 .alert-success {
     background-color: rgba($color-success, 0.1);
     border: 1px solid rgba($color-success, 0.3);
-    color: darken($color-success, 20%);
+    color: color.adjust($color-success, $lightness: -20%);
 }
 
 .alert-warning {
     background-color: rgba($color-warning, 0.1);
     border: 1px solid rgba($color-warning, 0.3);
-    color: darken($color-warning, 20%);
+    color: color.adjust($color-warning, $lightness: -20%);
 }
 
 .alert-danger {
     background-color: rgba($color-danger, 0.1);
     border: 1px solid rgba($color-danger, 0.3);
-    color: darken($color-danger, 20%);
+    color: color.adjust($color-danger, $lightness: -20%);
 }
 
 // Badge

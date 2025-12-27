@@ -17,6 +17,7 @@ class Gallery extends Model
         'name',
         'slug',
         'google_drive_folder_id',
+        'local_gallery_id',
     ];
 
     protected static function boot(): void

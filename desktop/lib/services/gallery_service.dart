@@ -140,9 +140,11 @@ class GalleryService {
       }
 
       // Upload to web with per-image progress
+      // Pass local gallery ID for automatic order matching
       final response = await _apiService.uploadGalleryWithProgress(
         name: gallery.name,
         images: compressedFiles,
+        localGalleryId: galleryId,
         onProgress: (uploaded, total) {
           onProgress?.call(uploaded, total, 'Uploading $uploaded of $total');
         },

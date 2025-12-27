@@ -1,3 +1,4 @@
+@use 'sass:math';
 @use 'variables' as *;
 
 // Media Queries
@@ -150,5 +151,5 @@
 
 // Aspect Ratio
 @mixin aspect-ratio($width, $height) {
-    aspect-ratio: $width / $height;
+    aspect-ratio: math.div($width, $height);
 }

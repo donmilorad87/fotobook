@@ -9,6 +9,7 @@
     <title>@yield('title', 'Gallery') - {{ config('app.name') }}</title>
 
     @vite(['resources/css/app.scss', 'resources/js/app.js', 'resources/js/gallery-selection.js', 'resources/js/lightbox.js', 'resources/js/google-image-loader.js'])
+    <script src="{{ asset('js/image-cache-service.js') }}?v={{ config('app.assets_version') }}"></script>
 </head>
 <body>
     <div class="public-layout">

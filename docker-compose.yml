@@ -23,6 +23,31 @@ services:
       - fotobook_network
 
   # =============================================================================
+  # RabbitMQ (Message Queue)
+  # =============================================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: fotobook_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-fotobook}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-secret}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-fotobook}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fotobook_network
+
+  # =============================================================================
   # Redis (Session & Cache)
   # =============================================================================
   redis:
@@ -68,6 +93,11 @@ services:
       CACHE_DRIVER: redis
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-fotobook}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-fotobook}
     volumes:
       - ./web:/var/www/html
       - ./web/storage/app/public:/var/www/html/storage/app/public
@@ -75,6 +105,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fotobook_network
@@ -96,6 +128,7 @@ services:
       - ./docker/nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - app
+      - rabbitmq
     networks:
       - fotobook_network
 
@@ -133,6 +166,84 @@ services:
       - fotobook_network
 
   # =============================================================================
+  # RabbitMQ Image Fetch Worker
+  # =============================================================================
+  rabbitmq-worker:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: app
+    container_name: fotobook_rabbitmq_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan rabbitmq:image-worker
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-fotobook}
+      DB_USERNAME: ${DB_USERNAME:-fotobook}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_DRIVER: redis
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-fotobook}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-fotobook}
+    volumes:
+      - ./web:/var/www/html
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fotobook_network
+
+  # =============================================================================
+  # RabbitMQ Image Upload Worker
+  # =============================================================================
+  rabbitmq-upload-worker:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: app
+    container_name: fotobook_rabbitmq_upload_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan rabbitmq:upload-worker
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-fotobook}
+      DB_USERNAME: ${DB_USERNAME:-fotobook}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_DRIVER: redis
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-fotobook}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-secret}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-fotobook}
+    volumes:
+      - ./web:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fotobook_network
+
+  # =============================================================================
   # Node.js (Vite Dev Server - Development Only)
   # =============================================================================
   node:
@@ -163,4 +274,6 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  rabbitmq_data:
     driver: local

@@ -56,6 +56,7 @@ class Order extends Model
 
     /**
      * Convert order to JSON export format for desktop app.
+     * Includes local_gallery_id for automatic gallery matching.
      */
     public function toExportArray(): array
     {
@@ -64,6 +65,7 @@ class Order extends Model
         return [
             'order_id' => $this->id,
             'gallery_id' => $this->gallery_id,
+            'local_gallery_id' => $this->gallery->local_gallery_id,
             'gallery_name' => $this->gallery->name,
             'client_name' => $this->client_name,
             'client_email' => $this->client_email,

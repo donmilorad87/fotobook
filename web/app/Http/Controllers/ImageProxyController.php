@@ -2,97 +2,62 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\RabbitMQService;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ImageProxyController extends Controller
 {
+    private RabbitMQService $rabbitMQ;
+
+    public function __construct(RabbitMQService $rabbitMQ)
+    {
+        $this->rabbitMQ = $rabbitMQ;
+    }
+
     /**
      * Proxy Google Drive images to avoid CORS issues.
-     * Mimics browser request to reliably fetch images.
+     * Uses RabbitMQ RPC pattern for image fetching.
      * Caches images for 1 hour to reduce API calls.
      */
     public function show(string $fileId): Response
     {
         $cacheKey = "gdrive_image_{$fileId}";
 
-        $imageData = Cache::remember($cacheKey, 3600, function () use ($fileId) {
-            return $this->fetchGoogleDriveImage($fileId);
-        });
+        $imageData = Cache::get($cacheKey);
 
-        if ($imageData === null) {
+        if ($imageData !== null && isset($imageData['success']) && $imageData['success']) {
+            return $this->buildImageResponse($imageData);
+        }
+
+        $imageData = $this->fetchViaRabbitMQ($fileId);
+
+        if ($imageData === null || !isset($imageData['success']) || !$imageData['success']) {
+            Log::warning("Image fetch failed for: {$fileId}");
             abort(404, 'Image not found');
         }
 
+        Cache::put($cacheKey, $imageData, 31536000); // 1 year
+
+        return $this->buildImageResponse($imageData);
+    }
+
+    /**
+     * Fetch image via RabbitMQ RPC.
+     */
+    private function fetchViaRabbitMQ(string $fileId): ?array
+    {
+        return $this->rabbitMQ->rpcImageFetch($fileId);
+    }
+
+    /**
+     * Build the HTTP response for an image.
+     */
+    private function buildImageResponse(array $imageData): Response
+    {
         return response(base64_decode($imageData['body']))
             ->header('Content-Type', $imageData['content_type'])
             ->header('Cache-Control', 'public, max-age=86400');
-    }
-
-    /**
-     * Fetch image from Google Drive using cURL.
-     * Tries multiple URL formats for reliability.
-     */
-    private function fetchGoogleDriveImage(string $fileId): ?array
-    {
-        // Try multiple URL formats - Google changes these periodically
-        $urls = [
-            "https://drive.google.com/thumbnail?id={$fileId}&sz=w1920",
-            "https://lh3.googleusercontent.com/d/{$fileId}=w1920",
-            "https://drive.google.com/uc?export=view&id={$fileId}",
-        ];
-
-        foreach ($urls as $url) {
-            $result = $this->tryFetchImage($url);
-            if ($result !== null) {
-                return $result;
-            }
-        }
-
-        \Log::warning("Google Drive image fetch failed for all URLs: {$fileId}");
-        return null;
-    }
-
-    /**
-     * Attempt to fetch image from a single URL.
-     */
-    private function tryFetchImage(string $url): ?array
-    {
-        $ch = curl_init();
-
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-            CURLOPT_HTTPHEADER => [
-                'Accept: image/*,*/*;q=0.8',
-            ],
-        ]);
-
-        $body = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        $error = curl_error($ch);
-
-        curl_close($ch);
-
-        if ($error || $httpCode !== 200 || empty($body)) {
-            return null;
-        }
-
-        // Verify it's actually an image (not an HTML error page)
-        if (strpos($contentType, 'text/html') !== false) {
-            return null;
-        }
-
-        return [
-            'body' => base64_encode($body),
-            'content_type' => $contentType ?: 'image/jpeg',
-        ];
     }
 }

@@ -25,7 +25,7 @@ return [
     |
     */
 
-    'assets_version' => env('ASSETS_VERSION', '1.0.0'),
+    'assets_version' => env('ASSETS_VERSION', '1.0.02'),
 
     /*
     |--------------------------------------------------------------------------

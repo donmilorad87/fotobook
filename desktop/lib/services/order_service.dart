@@ -24,10 +24,20 @@ class OrderService {
     return Order.fromJson(json);
   }
 
+  /// Find matching gallery for an order.
+  /// Uses localGalleryId for automatic matching (preferred).
+  /// Falls back to name matching if localGalleryId not available.
   Future<Gallery?> findMatchingGallery(Order order, int userId) async {
-    final galleries = await _databaseService.galleries.getAllForUser(userId);
+    // First, try direct match using localGalleryId (most reliable)
+    if (order.hasLocalGalleryId) {
+      final gallery = await _databaseService.galleries.getById(order.localGalleryId!);
+      if (gallery != null && gallery.userId == userId) {
+        return gallery;
+      }
+    }
 
-    // Try to find gallery by name
+    // Fallback: try to find gallery by name
+    final galleries = await _databaseService.galleries.getAllForUser(userId);
     for (final gallery in galleries) {
       if (gallery.name == order.galleryName) {
         return gallery;
@@ -36,6 +46,9 @@ class OrderService {
 
     return null;
   }
+
+  /// Check if an order can be automatically processed (has localGalleryId).
+  bool canAutoProcess(Order order) => order.hasLocalGalleryId;
 
   Future<List<MatchedFile>> matchOrderToGallery(Order order, Gallery gallery) async {
     final pictures = await _databaseService.pictures.getAllForGallery(gallery.id);

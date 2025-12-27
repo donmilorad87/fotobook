@@ -54,10 +54,11 @@ class GalleryController extends Controller
 
         $galleryName = $gallery->name;
 
-        // Delete from database AND Google Drive
-        $this->galleryService->deleteGallery($gallery, Auth::user());
+        // Delete from database AND Google Drive, get invalidated cache IDs
+        $invalidatedIds = $this->galleryService->deleteGallery($gallery, Auth::user());
 
         return redirect()->route('galleries.index')
-            ->with('success', "Gallery \"{$galleryName}\" deleted successfully.");
+            ->with('success', "Gallery \"{$galleryName}\" deleted successfully.")
+            ->with('invalidate_cache', $invalidatedIds);
     }
 }

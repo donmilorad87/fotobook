@@ -63,7 +63,8 @@ RUN apk add --no-cache \
     git \
     curl \
     icu-dev \
-    oniguruma-dev
+    oniguruma-dev \
+    linux-headers
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd \
@@ -80,7 +81,8 @@ RUN docker-php-ext-install \
     intl \
     mbstring \
     opcache \
-    pcntl
+    pcntl \
+    sockets
 
 # Install Redis extension
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \

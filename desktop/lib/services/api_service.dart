@@ -60,17 +60,25 @@ class ApiService {
 
   /// Create a new gallery (without images).
   /// Returns gallery_id and folder_id for subsequent image uploads.
+  /// [localGalleryId] is the local database ID for automatic order matching.
   Future<Map<String, dynamic>> createGallery({
     required String name,
     required int totalImages,
+    int? localGalleryId,
   }) async {
+    final body = <String, dynamic>{
+      'name': name,
+      'total_images': totalImages,
+    };
+
+    if (localGalleryId != null) {
+      body['local_gallery_id'] = localGalleryId;
+    }
+
     final response = await _client.post(
       Uri.parse('$_baseUrl/galleries'),
       headers: _headers,
-      body: jsonEncode({
-        'name': name,
-        'total_images': totalImages,
-      }),
+      body: jsonEncode(body),
     );
 
     return _handleResponse(response);
@@ -123,17 +131,20 @@ class ApiService {
 
   /// Upload gallery with progress callback.
   /// [onProgress] is called after each image upload with (uploaded, total).
+  /// [localGalleryId] is the local database ID for automatic order matching.
   Future<Map<String, dynamic>> uploadGalleryWithProgress({
     required String name,
     required List<File> images,
     required void Function(int uploaded, int total) onProgress,
+    int? localGalleryId,
   }) async {
     final totalImages = images.length;
 
-    // Step 1: Create gallery
+    // Step 1: Create gallery with local ID for order matching
     final createResult = await createGallery(
       name: name,
       totalImages: totalImages,
+      localGalleryId: localGalleryId,
     );
 
     final galleryId = createResult['gallery_id'] as int;
