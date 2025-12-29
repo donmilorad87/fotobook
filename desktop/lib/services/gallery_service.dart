@@ -182,6 +182,71 @@ class GalleryService {
     return await _databaseService.pictures.getAllForGallery(galleryId);
   }
 
+  /// Add pictures to an existing local gallery.
+  /// Only works for galleries that have NOT been submitted yet.
+  Future<Gallery> addPicturesToGallery({
+    required int galleryId,
+    required List<File> images,
+    void Function(int current, int total)? onProgress,
+  }) async {
+    final gallery = await _databaseService.galleries.getById(galleryId);
+    if (gallery == null) {
+      throw Exception('Gallery not found');
+    }
+
+    if (gallery.isSubmitted) {
+      throw Exception('Cannot add pictures to submitted gallery');
+    }
+
+    final now = DateTime.now();
+    final pictures = <Picture>[];
+
+    for (int i = 0; i < images.length; i++) {
+      final image = images[i];
+      final info = await _imageService.getImageInfo(image);
+
+      pictures.add(Picture(
+        id: 0,
+        galleryId: galleryId,
+        filePath: image.path,
+        fileName: path.basename(image.path),
+        fileSize: info.fileSize,
+        width: info.width,
+        height: info.height,
+        createdAt: now,
+      ));
+
+      onProgress?.call(i + 1, images.length);
+    }
+
+    await _databaseService.pictures.createMany(pictures);
+    await _databaseService.galleries.incrementPictureCount(galleryId, pictures.length);
+
+    return (await _databaseService.galleries.getByIdWithPictures(galleryId))!;
+  }
+
+  /// Remove a picture from a local gallery.
+  /// Only works for galleries that have NOT been submitted yet.
+  /// Does NOT delete the actual file from disk.
+  Future<Gallery> removePictureFromGallery({
+    required int galleryId,
+    required int pictureId,
+  }) async {
+    final gallery = await _databaseService.galleries.getById(galleryId);
+    if (gallery == null) {
+      throw Exception('Gallery not found');
+    }
+
+    if (gallery.isSubmitted) {
+      throw Exception('Cannot remove pictures from submitted gallery');
+    }
+
+    await _databaseService.pictures.delete(pictureId);
+    await _databaseService.galleries.incrementPictureCount(galleryId, -1);
+
+    return (await _databaseService.galleries.getByIdWithPictures(galleryId))!;
+  }
+
   /// Syncs local galleries with the web server.
   /// Removes local galleries that have been deleted on the server.
   /// Returns the number of galleries removed.

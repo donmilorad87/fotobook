@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../models/user.dart';
@@ -180,6 +181,42 @@ class AppState extends ChangeNotifier {
 
     if (_selectedGallery?.id == galleryId) {
       _selectedGallery = null;
+    }
+
+    await loadGalleries();
+  }
+
+  Future<void> addPicturesToGallery({
+    required int galleryId,
+    required List<File> images,
+    void Function(int current, int total)? onProgress,
+  }) async {
+    final gallery = await _galleryService.addPicturesToGallery(
+      galleryId: galleryId,
+      images: images,
+      onProgress: onProgress,
+    );
+
+    if (_selectedGallery?.id == galleryId) {
+      _selectedGallery = gallery;
+      notifyListeners();
+    }
+
+    await loadGalleries();
+  }
+
+  Future<void> removePictureFromGallery({
+    required int galleryId,
+    required int pictureId,
+  }) async {
+    final gallery = await _galleryService.removePictureFromGallery(
+      galleryId: galleryId,
+      pictureId: pictureId,
+    );
+
+    if (_selectedGallery?.id == galleryId) {
+      _selectedGallery = gallery;
+      notifyListeners();
     }
 
     await loadGalleries();

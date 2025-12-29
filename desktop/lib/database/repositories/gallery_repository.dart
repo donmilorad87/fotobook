@@ -161,4 +161,23 @@ class GalleryRepository {
     );
     return (result.first['total'] as int?) ?? 0;
   }
+
+  Future<void> updatePictureCount(int id, int count) async {
+    await _db.update(
+      'galleries',
+      {
+        'picture_count': count,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> incrementPictureCount(int id, int delta) async {
+    await _db.rawUpdate(
+      'UPDATE galleries SET picture_count = picture_count + ?, updated_at = ? WHERE id = ?',
+      [delta, DateTime.now().toIso8601String(), id],
+    );
+  }
 }

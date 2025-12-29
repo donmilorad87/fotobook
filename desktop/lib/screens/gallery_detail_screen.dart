@@ -2,9 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../state/app_state.dart';
 import '../models/gallery.dart';
+import '../models/picture.dart';
+import '../widgets/lightbox.dart';
 
 class GalleryDetailScreen extends StatefulWidget {
   final int galleryId;
@@ -21,6 +24,7 @@ class GalleryDetailScreen extends StatefulWidget {
 class _GalleryDetailScreenState extends State<GalleryDetailScreen> {
   bool _isLoading = true;
   bool _isSubmitting = false;
+  bool _isAddingPictures = false;
   String _submitStatus = '';
   int _submitProgress = 0;
   int _submitTotal = 0;
@@ -81,6 +85,101 @@ class _GalleryDetailScreenState extends State<GalleryDetailScreen> {
     }
   }
 
+  Future<void> _addPictures() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: true,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    setState(() => _isAddingPictures = true);
+
+    try {
+      final files = result.files
+          .where((f) => f.path != null)
+          .map((f) => File(f.path!))
+          .toList();
+
+      await context.read<AppState>().addPicturesToGallery(
+        galleryId: widget.galleryId,
+        images: files,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added ${files.length} picture(s)'),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAddingPictures = false);
+      }
+    }
+  }
+
+  Future<void> _deletePicture(Picture picture) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Picture'),
+        content: Text(
+          'Remove "${picture.fileName}" from this gallery?\n\n'
+          'The original file will NOT be deleted from your computer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFDC2626),
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await context.read<AppState>().removePictureFromGallery(
+          galleryId: widget.galleryId,
+          pictureId: picture.id,
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Picture removed')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _deleteGallery() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -122,6 +221,14 @@ class _GalleryDetailScreenState extends State<GalleryDetailScreen> {
     );
   }
 
+  void _openLightbox(List<Picture> pictures, int index) {
+    Lightbox.show(
+      context,
+      pictures: pictures,
+      initialIndex: index,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,9 +246,28 @@ class _GalleryDetailScreenState extends State<GalleryDetailScreen> {
 
               return Row(
                 children: [
+                  // Add Pictures button (only for local galleries)
                   if (!gallery.isSubmitted)
                     TextButton.icon(
-                      onPressed: _isSubmitting ? null : _submitGallery,
+                      onPressed: _isAddingPictures || _isSubmitting
+                          ? null
+                          : _addPictures,
+                      icon: _isAddingPictures
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.add_photo_alternate_outlined),
+                      label: const Text('Add Pictures'),
+                    ),
+                  if (!gallery.isSubmitted) const SizedBox(width: 8),
+                  // Upload button (only for local galleries)
+                  if (!gallery.isSubmitted)
+                    TextButton.icon(
+                      onPressed: _isSubmitting || _isAddingPictures
+                          ? null
+                          : _submitGallery,
                       icon: const Icon(Icons.cloud_upload_outlined),
                       label: const Text('Upload'),
                     ),
@@ -256,7 +382,11 @@ class _GalleryDetailScreenState extends State<GalleryDetailScreen> {
 
                     // Pictures grid
                     Expanded(
-                      child: _PicturesGrid(gallery: gallery),
+                      child: _PicturesGrid(
+                        gallery: gallery,
+                        onPictureTap: _openLightbox,
+                        onPictureDelete: gallery.isSubmitted ? null : _deletePicture,
+                      ),
                     ),
                   ],
                 );
@@ -296,16 +426,49 @@ class _InfoChip extends StatelessWidget {
 
 class _PicturesGrid extends StatelessWidget {
   final Gallery gallery;
+  final void Function(List<Picture> pictures, int index) onPictureTap;
+  final void Function(Picture picture)? onPictureDelete;
 
-  const _PicturesGrid({required this.gallery});
+  const _PicturesGrid({
+    required this.gallery,
+    required this.onPictureTap,
+    this.onPictureDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     final pictures = gallery.pictures ?? [];
 
     if (pictures.isEmpty) {
-      return const Center(
-        child: Text('No pictures in this gallery'),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.photo_library_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No pictures in this gallery',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+            if (!gallery.isSubmitted) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Click "Add Pictures" to add images',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ],
+        ),
       );
     }
 
@@ -322,7 +485,47 @@ class _PicturesGrid extends StatelessWidget {
         final picture = pictures[index];
         final file = File(picture.filePath);
 
-        return Container(
+        return _PictureCard(
+          picture: picture,
+          file: file,
+          onTap: () => onPictureTap(pictures, index),
+          onDelete: onPictureDelete != null
+              ? () => onPictureDelete!(picture)
+              : null,
+        );
+      },
+    );
+  }
+}
+
+class _PictureCard extends StatefulWidget {
+  final Picture picture;
+  final File file;
+  final VoidCallback onTap;
+  final VoidCallback? onDelete;
+
+  const _PictureCard({
+    required this.picture,
+    required this.file,
+    required this.onTap,
+    this.onDelete,
+  });
+
+  @override
+  State<_PictureCard> createState() => _PictureCardState();
+}
+
+class _PictureCardState extends State<_PictureCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFFE2E8F0)),
@@ -332,12 +535,13 @@ class _PicturesGrid extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                // Image
                 FutureBuilder<bool>(
-                  future: file.exists(),
+                  future: widget.file.exists(),
                   builder: (context, snapshot) {
                     if (snapshot.data == true) {
                       return Image.file(
-                        file,
+                        widget.file,
                         fit: BoxFit.cover,
                         cacheWidth: 400,
                       );
@@ -351,6 +555,8 @@ class _PicturesGrid extends StatelessWidget {
                     );
                   },
                 ),
+
+                // Filename overlay at bottom
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -371,7 +577,7 @@ class _PicturesGrid extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      picture.fileName,
+                      widget.picture.fileName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -382,11 +588,40 @@ class _PicturesGrid extends StatelessWidget {
                     ),
                   ),
                 ),
+
+                // Delete button (top-right, only when hovered and deletable)
+                if (widget.onDelete != null && _isHovered)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Material(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        onTap: widget.onDelete,
+                        borderRadius: BorderRadius.circular(16),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Hover overlay
+                if (_isHovered)
+                  Container(
+                    color: Colors.black.withOpacity(0.1),
+                  ),
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
