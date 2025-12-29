@@ -36,7 +36,7 @@ class GoogleDriveService
         $client = new GoogleClient();
         $client->setClientId(config('services.google.client_id'));
         $client->setClientSecret(config('services.google.client_secret'));
-        $client->addScope(GoogleDrive::DRIVE_FILE);
+        $client->addScope(GoogleDrive::DRIVE);
 
         $client->setAccessToken([
             'access_token' => $this->user->google_access_token,

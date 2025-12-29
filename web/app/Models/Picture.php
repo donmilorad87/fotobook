@@ -57,15 +57,10 @@ class Picture extends Model
 
     /**
      * Get the display URL for this picture.
-     * Uses local proxy to avoid CORS issues with Google Drive.
+     * Returns placeholder - actual images loaded via JS from Google Drive API.
      */
     public function getDisplayUrlAttribute(): string
     {
-        $fileId = $this->file_id;
-        if ($fileId) {
-            return route('image.proxy', $fileId);
-        }
-
         return '/images/placeholder.jpg';
     }
 

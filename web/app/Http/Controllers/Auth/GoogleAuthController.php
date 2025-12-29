@@ -36,7 +36,7 @@ class GoogleAuthController extends Controller
     public function redirect(): RedirectResponse
     {
         return Socialite::driver('google')
-            ->scopes(['https://www.googleapis.com/auth/drive.file'])
+            ->scopes(['https://www.googleapis.com/auth/drive'])
             ->with(['access_type' => 'offline', 'prompt' => 'consent'])
             ->redirect();
     }
@@ -65,10 +65,11 @@ class GoogleAuthController extends Controller
                 'google_access_token' => $googleUser->token,
                 'google_refresh_token' => $googleUser->refreshToken,
                 'google_token_expires_at' => now()->addSeconds($googleUser->expiresIn),
+                'google_email' => $googleUser->email,
             ]);
 
             return redirect()->route('dashboard')
-                ->with('success', 'Google account connected successfully!');
+                ->with('success', 'Google Drive connected: ' . $googleUser->email);
         } catch (\Exception $e) {
             return redirect()->route('google.connect')
                 ->with('error', 'Failed to connect Google account: ' . $e->getMessage());
@@ -90,6 +91,7 @@ class GoogleAuthController extends Controller
             'google_access_token' => null,
             'google_refresh_token' => null,
             'google_token_expires_at' => null,
+            'google_email' => null,
         ]);
 
         return redirect()->route('google.connect')

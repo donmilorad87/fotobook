@@ -15,7 +15,7 @@
     <div class="gallery-grid" data-gallery-slug="{{ $gallery->slug }}">
         @foreach($gallery->pictures as $index => $picture)
             <div class="gallery-item" data-index="{{ $index }}" data-filename="{{ $picture->original_filename }}" data-google-image-id="{{ $picture->file_id }}">
-                <img src="" alt="{{ $picture->original_filename }}" class="gallery-item-image" data-google-image-id="{{ $picture->file_id }}" loading="lazy">
+                <img src="/images/placeholder.svg" alt="{{ $picture->original_filename }}" class="gallery-item-image" data-google-image-id="{{ $picture->file_id }}" loading="lazy">
                 <div class="gallery-item-checkbox" data-picture-id="{{ $picture->id }}">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />

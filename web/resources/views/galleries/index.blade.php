@@ -31,7 +31,7 @@
             <div class="gallery-card">
                 <div class="gallery-card-image">
                     @if($gallery->cover_file_id)
-                        <img src="" alt="{{ $gallery->name }}" class="gallery-item-image" data-google-image-id="{{ $gallery->cover_file_id }}">
+                        <img src="/images/placeholder.svg" alt="{{ $gallery->name }}" class="gallery-item-image" data-google-image-id="{{ $gallery->cover_file_id }}">
                     @else
                         <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f1f5f9;">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1" style="width: 48px; height: 48px; color: #cbd5e1;">

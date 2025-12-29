@@ -1,20 +1,35 @@
 /**
  * Google Drive Image Loader
- * Fetches images through backend proxy to avoid CORS issues.
+ * Fetches images directly from Google Drive API.
  * Uses IndexedDB for persistent caching across sessions.
  * Uses memory cache for fast access within session.
  */
 
 class GoogleImageLoader {
     constructor(options = {}) {
+        console.log('kurcina');
+        
         this.selector = options.selector || '.gallery-item-image[data-google-image-id]';
         this.concurrency = options.concurrency || 6;
         this.retryAttempts = options.retryAttempts || 3;
         this.retryDelay = options.retryDelay || 1000;
+        this.apiKey = options.apiKey || null;
+        this.placeholderUrl = options.placeholderUrl || '/images/placeholder.svg';
+        this.errorPlaceholderUrl = options.errorPlaceholderUrl || '/images/placeholder-error.svg';
         this.queue = [];
         this.activeRequests = 0;
-        this.loadedImages = new Map(); // Memory cache for blob URLs
+        this.loadedImages = new Map();
         this.cacheService = window.imageCacheService || null;
+    }
+
+    /**
+     * Build Google Drive API URL for file download.
+     */
+    buildApiUrl(fileId) {
+        if (!this.apiKey) {
+            throw new Error('Google API key not configured');
+        }
+        return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${this.apiKey}`;
     }
 
     init() {
@@ -26,6 +41,7 @@ class GoogleImageLoader {
             const img = images[i];
             const imageId = img.dataset.googleImageId;
             if (imageId) {
+                // Placeholder is already set in HTML, just add loading class
                 img.classList.add('google-loading-image');
                 this.queue.push({ img, imageId, attempts: 0 });
             }
@@ -68,8 +84,8 @@ class GoogleImageLoader {
             return;
         }
 
-        // 3. Fetch from backend API
-        await this.fetchFromApi(item);
+        // 3. Fetch from Google Drive API
+        await this.fetchFromGoogleApi(item);
     }
 
     async getFromIndexedDB(imageId) {
@@ -92,15 +108,16 @@ class GoogleImageLoader {
         }
     }
 
-    async fetchFromApi(item) {
+    async fetchFromGoogleApi(item) {
         const { img, imageId } = item;
 
         try {
-            const url = `/image/${imageId}`;
+            const url = this.buildApiUrl(imageId);
             const response = await fetch(url);
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                const errorText = await response.text().catch(() => '');
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
             const contentType = response.headers.get('Content-Type') || 'image/jpeg';
@@ -126,6 +143,7 @@ class GoogleImageLoader {
                 this.queue.push(item);
             } else {
                 console.warn(`Failed to load image after ${this.retryAttempts} attempts:`, imageId, error);
+                img.src = this.errorPlaceholderUrl;
                 img.classList.remove('google-loading-image');
                 img.classList.add('google-error-image');
             }
@@ -133,14 +151,24 @@ class GoogleImageLoader {
     }
 
     applyImageToElement(img, blobUrl, imageId) {
-        img.src = blobUrl;
-        img.classList.remove('google-loading-image');
-        img.classList.add('google-loaded-image');
+        // Preload image before swapping to avoid flash
+        const preloader = new Image();
+        preloader.onload = () => {
+            img.src = blobUrl;
+            img.classList.remove('google-loading-image');
+            img.classList.add('google-loaded-image');
 
-        img.dispatchEvent(new CustomEvent('google-image-loaded', {
-            bubbles: true,
-            detail: { imageId, objectUrl: blobUrl }
-        }));
+            img.dispatchEvent(new CustomEvent('google-image-loaded', {
+                bubbles: true,
+                detail: { imageId, objectUrl: blobUrl }
+            }));
+        };
+        preloader.onerror = () => {
+            img.src = this.errorPlaceholderUrl;
+            img.classList.remove('google-loading-image');
+            img.classList.add('google-error-image');
+        };
+        preloader.src = blobUrl;
     }
 
     // Get cached URL for an image ID (memory only)
@@ -166,9 +194,9 @@ class GoogleImageLoader {
             return blobUrl;
         }
 
-        // 3. Fetch from API
+        // 3. Fetch from Google Drive API
         try {
-            const url = `/image/${imageId}`;
+            const url = this.buildApiUrl(imageId);
             const response = await fetch(url);
 
             if (!response.ok) {
@@ -240,10 +268,21 @@ let googleImageLoader = null;
 
 // Auto-initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Get API key from Vite env or window config
+    const apiKey = typeof import.meta !== 'undefined' && import.meta.env
+        ? import.meta.env.VITE_GOOGLE_API_KEY
+        : (window.GOOGLE_API_KEY || null);
+
+    if (!apiKey) {
+        console.error('Google API key not found. Set VITE_GOOGLE_API_KEY in .env');
+        return;
+    }
+
     googleImageLoader = new GoogleImageLoader({
         selector: '.gallery-item-image[data-google-image-id]',
         concurrency: 6,
         retryAttempts: 3,
+        apiKey: apiKey,
     });
     googleImageLoader.init();
 });

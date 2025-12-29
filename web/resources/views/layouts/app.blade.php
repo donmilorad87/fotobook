@@ -13,6 +13,7 @@
 </head>
 <body>
     <div class="app-layout">
+        <div class="sidebar-overlay"></div>
         @include('components.sidebar')
 
         <div class="app-main">

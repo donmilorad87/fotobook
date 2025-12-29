@@ -69,7 +69,7 @@
             <div class="gallery-grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">
                 @foreach($gallery->pictures as $picture)
                     <div class="gallery-item" style="aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #f1f5f9;">
-                        <img src="" alt="{{ $picture->original_filename }}" class="gallery-item-image" data-google-image-id="{{ $picture->file_id }}" loading="lazy">
+                        <img src="/images/placeholder.svg" alt="{{ $picture->original_filename }}" class="gallery-item-image" data-google-image-id="{{ $picture->file_id }}" loading="lazy">
                     </div>
                 @endforeach
             </div>

@@ -37,6 +37,64 @@
     padding: 0 $spacing-6;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+}
+
+.header-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    margin: 0;
+}
+
+.header-user {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+}
+
+.header-user-name {
+    font-size: $font-size-sm;
+    color: $color-gray-600;
+}
+
+.header-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: $color-primary;
+    color: $color-white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+}
+
+.sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-2;
+}
+
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: $z-fixed - 1;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity $transition-base, visibility $transition-base;
+
+    &.is-visible {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
 .app-content {
     flex: 1;
     padding: $spacing-6;

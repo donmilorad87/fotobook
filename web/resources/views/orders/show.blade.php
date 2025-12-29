@@ -25,7 +25,7 @@
         <div class="order-pictures-grid">
             @foreach($order->selectedPictures as $picture)
                 <div class="order-picture-item">
-                    <img src="" alt="{{ $picture->original_filename }}" class="gallery-item-image" data-google-image-id="{{ $picture->file_id }}" loading="lazy">
+                    <img src="/images/placeholder.svg" alt="{{ $picture->original_filename }}" class="gallery-item-image" data-google-image-id="{{ $picture->file_id }}" loading="lazy">
                 </div>
             @endforeach
         </div>

@@ -6,7 +6,6 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\GalleryController;
-use App\Http\Controllers\ImageProxyController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicGalleryController;
@@ -31,9 +30,6 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->midd
 // Public gallery routes (no auth required)
 Route::get('/gallery/{slug}', [PublicGalleryController::class, 'show'])->name('public.gallery');
 Route::post('/gallery/{slug}/order', [PublicGalleryController::class, 'submitSelection'])->name('public.gallery.order');
-
-// Image proxy for Google Drive (no auth required, images are already public)
-Route::get('/image/{fileId}', [ImageProxyController::class, 'show'])->name('image.proxy');
 
 // Authenticated routes
 Route::middleware('auth')->group(function () {
